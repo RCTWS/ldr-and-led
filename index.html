@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الـ LED عبر MQTT</title>
+    <!-- استدعاء مكتبة MQTT عبر CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <style>
+        body {
+            font-family: Tahoma, sans-serif;
+            background-color: #f4f4f9;
+            text-align: center;
+            padding-top: 50px;
+        }
+        .card {
+            background: white;
+            max-width: 400px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            font-size: 18px;
+            padding: 12px 25px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+        .btn-on { background-color: #28a745; }
+        .btn-off { background-color: #dc3545; }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>التحكم في LED (بين 2)</h2>
+        <p id="status">جاري الاتصال بالـ Broker...</p>
+        <br>
+        <button class="btn-on" onclick="sendControl('ON')">تشغيل (ON)</button>
+        <button class="btn-off" onclick="sendControl('OFF')">إيقاف (OFF)</button>
+    </div>
+
+    <script>
+        // إعداد اتصال الـ WebSockets الخاص بـ HiveMQ
+        const brokerHost = "broker.hivemq.com";
+        const brokerPort = 8000; // بورت الـ WebSockets المجاني لـ HiveMQ
+        const topic = "robotechspace/led/control";
+
+        let client = new Paho.MQTT.Client(brokerHost, Number(brokerPort), "web_client_" + parseInt(Math.random() * 100000));
+
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        client.connect({onSuccess: onConnect});
+
+        function onConnect() {
+            document.getElementById("status").innerHTML = "متصل بالمنظومة بنجاح ✓";
+            document.getElementById("status").style.color = "green";
+            client.subscribe(topic);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                document.getElementById("status").innerHTML = "انقطع الاتصال: " + responseObject.errorMessage;
+                document.getElementById("status").style.color = "red";
+            }
+        }
+
+        function onMessageArrived(message) {
+            console.log("رسالة مستقبلة: " + message.payloadString);
+        }
+
+        function sendControl(command) {
+            if (client.isConnected()) {
+                message = new Paho.MQTT.Message(command);
+                message.destinationName = topic;
+                client.send(message);
+            } else {
+                alert("غير متصل بالخادم!");
+            }
+        }
+    </script>
+
+</body>
+</html>
